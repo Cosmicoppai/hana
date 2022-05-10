@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option go_package = ".;show";
+
+
+message Success {
+  string message = 1;
+  string status = 2;
+}

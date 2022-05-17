@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"hana/show"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -24,12 +26,14 @@ func addVideo(client show.VideoServiceClient, videoPath string, posterPath strin
 	info, _ := posterFile.Stat()
 	posterSize := info.Size()
 	poster := make([]byte, posterSize)
+
 	log.Println("Reading poster...")
 	_, err = posterFile.Read(poster)
 	if err != nil {
 		log.Println(err)
 	}
-	metaReq := &show.UploadVideo{Data: &show.UploadVideo_MetaData{MetaData: &show.MetaData{Poster: poster}}}
+	metaReq := &show.UploadVideo{Data: &show.UploadVideo_MetaData{MetaData: &show.MetaData{Poster: poster,
+		Name: "test"}}}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
 	stream, err := client.AddVideo(ctx)
@@ -40,6 +44,31 @@ func addVideo(client show.VideoServiceClient, videoPath string, posterPath strin
 	if err != nil {
 		log.Fatalln("Unable to send metaData", err)
 	}
+
+	file, err := os.Open(videoPath)
+	if err != nil {
+		log.Fatalln("Unable to open file", err)
+	}
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 5242880)
+
+	log.Println("Reading video data")
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalln("Cannot read chunk to buffer: ", err)
+		}
+		req := &show.UploadVideo{Data: &show.UploadVideo_Video{Video: &show.Video{Video: buffer[:n]}}}
+
+		err = stream.Send(req)
+		if err != nil {
+			log.Fatalln("Cannot send chunk to the server: ", err)
+		}
+	}
+
 	id, err := stream.CloseAndRecv()
 	if err != nil {
 		log.Println("Error while closing stream", err)

@@ -13,8 +13,8 @@ import (
 )
 
 type VideoStore interface {
-	Save(videoTyp string, videoData bytes.Buffer) (uuid.UUID, error)
-	SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error
+	Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error)
+	SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error
 }
 
 type DiskVideoStore struct {
@@ -32,10 +32,20 @@ func NewDiskStore(path string) *DiskVideoStore {
 	return &DiskVideoStore{videoFolder: path, videos: make(map[string]*VideoInfo)}
 }
 
-func (store *DiskVideoStore) Save(videoTyp string, videoData bytes.Buffer) (uuid.UUID, error) {
+func (store *DiskVideoStore) Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error) {
 	id := uuid.New()
 
-	filePath := fmt.Sprintf("%s%s%s", store.videoFolder, videoTyp, fmt.Sprintf("%s%s", id, videoTyp))
+	dirPath := filepath.Join(store.videoFolder, id.String())
+	dir, err := os.Stat(dirPath)
+	if err != nil || !dir.IsDir() {
+		err = os.MkdirAll(dirPath, 0755)
+		if err != nil {
+			log.Println(err)
+			return uuid.Nil, status.Errorf(codes.Internal, "Internal server Error")
+		}
+	}
+
+	filePath := fmt.Sprintf(filepath.Join(dirPath, fmt.Sprintf("%s.%s", videoName, videoTyp)))
 
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -57,20 +67,12 @@ func (store *DiskVideoStore) Save(videoTyp string, videoData bytes.Buffer) (uuid
 	return id, nil
 }
 
-func (store *DiskVideoStore) SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
+func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
 	if poster.Len() == 0 {
 		return status.Errorf(codes.InvalidArgument, "send poster in proper format")
 	}
-	dirPath := filepath.Join(store.videoFolder, "mp4")
-	dir, err := os.Stat(dirPath)
-	if err != nil || !dir.IsDir() {
-		err = os.MkdirAll(dirPath, 0755)
-		if err != nil {
-			log.Println(err)
-			return status.Errorf(codes.Internal, "Internal server Error")
-		}
-	}
-	filePath := fmt.Sprintf(filepath.Join(dirPath, fmt.Sprintf("%s%s", videoId, ".png")))
+	dirPath := filepath.Join(store.videoFolder, videoId.String())
+	filePath := fmt.Sprintf(filepath.Join(dirPath, fmt.Sprintf("%s%s", videoName, ".png")))
 	file, err := os.Create(filePath)
 	if err != nil {
 		log.Println(err)
@@ -95,11 +97,11 @@ func NewDBStore(connString string) *DBVideoStore {
 	return &DBVideoStore{connString: connString}
 }
 
-func (store *DBVideoStore) Save(videoTyp string, videoData bytes.Buffer) (uuid.UUID, error) {
+func (store *DBVideoStore) Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error) {
 	return uuid.Nil, nil
 
 }
 
-func (store *DBVideoStore) SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
+func (store *DBVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
 	return nil
 }

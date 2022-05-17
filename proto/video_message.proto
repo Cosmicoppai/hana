@@ -31,6 +31,7 @@ message Videos {
 message MetaData {
   bytes poster = 1;
   bytes sub = 2;
+  string name = 3;
   google.protobuf.Timestamp created_at = 5;
 }
 

@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-option go_package = ".;show";
-
-
-message ShowId {
-  uint32 show_id = 1;
-}

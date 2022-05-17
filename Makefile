@@ -1,7 +1,7 @@
 gen:
 	protoc --proto_path proto --go_out=:show  --go-grpc_out=:show --go_opt=paths=import proto/*.proto
 clean:
-	rm --r ./show
+	rm -r ./show
 server:
 	go run cmd/server/main.go --port 8096
 client:

@@ -13,12 +13,15 @@ import (
 func main() {
 	port := flag.Int("port", 9000, "Server Port")
 	flag.Parse()
-	log.Printf("Server is running on %d", *port)
+	log.Printf("dialling on port %d", *port)
 
 	address := fmt.Sprintf("0.0.0.0:%d", *port)
 
 	gRPCServer := grpc.NewServer()
-	videoServer := service.NewVideoServer()
+
+	videoStore := service.NewDiskStore("./video") // create an InMem VideoStore
+
+	videoServer := service.NewVideoServer(videoStore)
 	show.RegisterVideoServiceServer(gRPCServer, videoServer)
 
 	listener, err := net.Listen("tcp", address)

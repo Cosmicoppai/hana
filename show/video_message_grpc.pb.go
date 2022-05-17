@@ -23,11 +23,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VideoServiceClient interface {
+	GetVideo(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (VideoService_GetVideoClient, error)
 	GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*VideoMetaData, error)
 	GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error)
-	VideoMetadataByShow(ctx context.Context, in *ShowId, opts ...grpc.CallOption) (*VideosMetaData, error)
-	GetVideo(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (VideoService_GetVideoClient, error)
-	AddVideo(ctx context.Context, in *UploadVideo, opts ...grpc.CallOption) (*Success, error)
+	AddVideo(ctx context.Context, opts ...grpc.CallOption) (VideoService_AddVideoClient, error)
 }
 
 type videoServiceClient struct {
@@ -36,33 +35,6 @@ type videoServiceClient struct {
 
 func NewVideoServiceClient(cc grpc.ClientConnInterface) VideoServiceClient {
 	return &videoServiceClient{cc}
-}
-
-func (c *videoServiceClient) GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*VideoMetaData, error) {
-	out := new(VideoMetaData)
-	err := c.cc.Invoke(ctx, "/VideoService/get_video_metadata", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *videoServiceClient) GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error) {
-	out := new(VideosMetaData)
-	err := c.cc.Invoke(ctx, "/VideoService/get_videos_metadata", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *videoServiceClient) VideoMetadataByShow(ctx context.Context, in *ShowId, opts ...grpc.CallOption) (*VideosMetaData, error) {
-	out := new(VideosMetaData)
-	err := c.cc.Invoke(ctx, "/VideoService/video_metadata_by_show", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *videoServiceClient) GetVideo(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (VideoService_GetVideoClient, error) {
@@ -97,24 +69,66 @@ func (x *videoServiceGetVideoClient) Recv() (*Video, error) {
 	return m, nil
 }
 
-func (c *videoServiceClient) AddVideo(ctx context.Context, in *UploadVideo, opts ...grpc.CallOption) (*Success, error) {
-	out := new(Success)
-	err := c.cc.Invoke(ctx, "/VideoService/add_video", in, out, opts...)
+func (c *videoServiceClient) GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*VideoMetaData, error) {
+	out := new(VideoMetaData)
+	err := c.cc.Invoke(ctx, "/VideoService/get_video_metadata", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
+func (c *videoServiceClient) GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error) {
+	out := new(VideosMetaData)
+	err := c.cc.Invoke(ctx, "/VideoService/get_videos_metadata", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) AddVideo(ctx context.Context, opts ...grpc.CallOption) (VideoService_AddVideoClient, error) {
+	stream, err := c.cc.NewStream(ctx, &VideoService_ServiceDesc.Streams[1], "/VideoService/add_video", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &videoServiceAddVideoClient{stream}
+	return x, nil
+}
+
+type VideoService_AddVideoClient interface {
+	Send(*UploadVideo) error
+	CloseAndRecv() (*VideoId, error)
+	grpc.ClientStream
+}
+
+type videoServiceAddVideoClient struct {
+	grpc.ClientStream
+}
+
+func (x *videoServiceAddVideoClient) Send(m *UploadVideo) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *videoServiceAddVideoClient) CloseAndRecv() (*VideoId, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(VideoId)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility
 type VideoServiceServer interface {
+	GetVideo(*VideoId, VideoService_GetVideoServer) error
 	GetVideoMetadata(context.Context, *VideoId) (*VideoMetaData, error)
 	GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error)
-	VideoMetadataByShow(context.Context, *ShowId) (*VideosMetaData, error)
-	GetVideo(*VideoId, VideoService_GetVideoServer) error
-	AddVideo(context.Context, *UploadVideo) (*Success, error)
+	AddVideo(VideoService_AddVideoServer) error
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -122,20 +136,17 @@ type VideoServiceServer interface {
 type UnimplementedVideoServiceServer struct {
 }
 
+func (UnimplementedVideoServiceServer) GetVideo(*VideoId, VideoService_GetVideoServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetVideo not implemented")
+}
 func (UnimplementedVideoServiceServer) GetVideoMetadata(context.Context, *VideoId) (*VideoMetaData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideoMetadata not implemented")
 }
 func (UnimplementedVideoServiceServer) GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideosMetadata not implemented")
 }
-func (UnimplementedVideoServiceServer) VideoMetadataByShow(context.Context, *ShowId) (*VideosMetaData, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VideoMetadataByShow not implemented")
-}
-func (UnimplementedVideoServiceServer) GetVideo(*VideoId, VideoService_GetVideoServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetVideo not implemented")
-}
-func (UnimplementedVideoServiceServer) AddVideo(context.Context, *UploadVideo) (*Success, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddVideo not implemented")
+func (UnimplementedVideoServiceServer) AddVideo(VideoService_AddVideoServer) error {
+	return status.Errorf(codes.Unimplemented, "method AddVideo not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 
@@ -148,6 +159,27 @@ type UnsafeVideoServiceServer interface {
 
 func RegisterVideoServiceServer(s grpc.ServiceRegistrar, srv VideoServiceServer) {
 	s.RegisterService(&VideoService_ServiceDesc, srv)
+}
+
+func _VideoService_GetVideo_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(VideoId)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(VideoServiceServer).GetVideo(m, &videoServiceGetVideoServer{stream})
+}
+
+type VideoService_GetVideoServer interface {
+	Send(*Video) error
+	grpc.ServerStream
+}
+
+type videoServiceGetVideoServer struct {
+	grpc.ServerStream
+}
+
+func (x *videoServiceGetVideoServer) Send(m *Video) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _VideoService_GetVideoMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -186,61 +218,30 @@ func _VideoService_GetVideosMetadata_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _VideoService_VideoMetadataByShow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShowId)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(VideoServiceServer).VideoMetadataByShow(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/VideoService/video_metadata_by_show",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VideoServiceServer).VideoMetadataByShow(ctx, req.(*ShowId))
-	}
-	return interceptor(ctx, in, info, handler)
+func _VideoService_AddVideo_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(VideoServiceServer).AddVideo(&videoServiceAddVideoServer{stream})
 }
 
-func _VideoService_GetVideo_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(VideoId)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(VideoServiceServer).GetVideo(m, &videoServiceGetVideoServer{stream})
-}
-
-type VideoService_GetVideoServer interface {
-	Send(*Video) error
+type VideoService_AddVideoServer interface {
+	SendAndClose(*VideoId) error
+	Recv() (*UploadVideo, error)
 	grpc.ServerStream
 }
 
-type videoServiceGetVideoServer struct {
+type videoServiceAddVideoServer struct {
 	grpc.ServerStream
 }
 
-func (x *videoServiceGetVideoServer) Send(m *Video) error {
+func (x *videoServiceAddVideoServer) SendAndClose(m *VideoId) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _VideoService_AddVideo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UploadVideo)
-	if err := dec(in); err != nil {
+func (x *videoServiceAddVideoServer) Recv() (*UploadVideo, error) {
+	m := new(UploadVideo)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(VideoServiceServer).AddVideo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/VideoService/add_video",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VideoServiceServer).AddVideo(ctx, req.(*UploadVideo))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
@@ -258,20 +259,17 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "get_videos_metadata",
 			Handler:    _VideoService_GetVideosMetadata_Handler,
 		},
-		{
-			MethodName: "video_metadata_by_show",
-			Handler:    _VideoService_VideoMetadataByShow_Handler,
-		},
-		{
-			MethodName: "add_video",
-			Handler:    _VideoService_AddVideo_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "get_video",
 			Handler:       _VideoService_GetVideo_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "add_video",
+			Handler:       _VideoService_AddVideo_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "video_message.proto",

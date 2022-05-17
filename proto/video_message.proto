@@ -2,14 +2,13 @@ syntax = "proto3";
 
 option go_package = ".;show";
 
-import "success_message.proto";
-import "show_message.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/descriptor.proto";
 
 
 message VideoId {
-  uint32 id = 1;
+  string id = 1;
 }
 
 message Video {
@@ -18,8 +17,10 @@ message Video {
 
 
 message UploadVideo {
-  Video video = 1;
-  MetaData meta_data = 2;
+  oneof data {
+    Video video = 1;
+    MetaData meta_data = 2;
+  }
 }
 
 
@@ -30,10 +31,7 @@ message Videos {
 message MetaData {
   bytes poster = 1;
   bytes sub = 2;
-  string show_name = 3;
-  uint32  ep_no = 4;
   google.protobuf.Timestamp created_at = 5;
-  ShowId show_id = 6;
 }
 
 message VideoMetaData {
@@ -46,9 +44,8 @@ message VideosMetaData {
 }
 
 service VideoService {
-  rpc get_video_metadata(VideoId) returns (VideoMetaData) {};
-  rpc get_videos_metadata (google.protobuf.Empty) returns (VideosMetaData) {};
-  rpc video_metadata_by_show(ShowId) returns (VideosMetaData) {};
   rpc get_video (VideoId) returns (stream Video) {};
-  rpc add_video (UploadVideo) returns (Success) {};
+  rpc get_video_metadata (VideoId) returns (VideoMetaData) {};
+  rpc get_videos_metadata (google.protobuf.Empty) returns (VideosMetaData) {};
+  rpc add_video (stream UploadVideo) returns (VideoId) {};
 }

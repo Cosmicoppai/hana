@@ -3,7 +3,6 @@ syntax = "proto3";
 option go_package = ".;show";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/descriptor.proto";
 
 
@@ -42,11 +41,19 @@ message VideoMetaData {
 
 message VideosMetaData {
   repeated VideoMetaData videos = 1;
+  string next_page_token = 2;
+  int32 total_response = 3;
+}
+
+message VideosMetaDataRequest {
+  string page_token = 1;
+  int32 page_size = 2;
+
 }
 
 service VideoService {
   rpc get_video (VideoId) returns (stream Video) {};
   rpc get_video_metadata (VideoId) returns (MetaData) {};
-  rpc get_videos_metadata (google.protobuf.Empty) returns (VideosMetaData) {};
+  rpc get_videos_metadata (VideosMetaDataRequest) returns (VideosMetaData) {};
   rpc add_video (stream UploadVideo) returns (VideoId) {};
 }

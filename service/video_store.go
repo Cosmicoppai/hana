@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -15,6 +16,7 @@ import (
 type VideoStore interface {
 	Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error)
 	SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error
+	Find(videoId string) (error, *VideoInfo)
 }
 
 type DiskVideoStore struct {
@@ -86,6 +88,13 @@ func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, p
 	return nil
 }
 
+func (store *DiskVideoStore) Find(videoId string) (error, *VideoInfo) {
+	if info, ok := store.videos[videoId]; ok {
+		return nil, info
+	}
+	return errors.New("video doesn't exist"), nil
+}
+
 type DBVideoStore struct {
 	mutex       sync.RWMutex
 	videoFolder string
@@ -104,4 +113,11 @@ func (store *DBVideoStore) Save(videoName string, videoTyp string, videoData byt
 
 func (store *DBVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
 	return nil
+}
+
+func (store *DBVideoStore) Find(videoId string) (error, *VideoInfo) {
+	if info, ok := store.videos[videoId]; ok {
+		return nil, info
+	}
+	return errors.New("video doesn't exist"), nil
 }

@@ -19,12 +19,12 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// VideoServiceClient is the client_req API for VideoService service.
+// VideoServiceClient is the client API for VideoService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VideoServiceClient interface {
 	GetVideo(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (VideoService_GetVideoClient, error)
-	GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*VideoMetaData, error)
+	GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*MetaData, error)
 	GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error)
 	AddVideo(ctx context.Context, opts ...grpc.CallOption) (VideoService_AddVideoClient, error)
 }
@@ -69,8 +69,8 @@ func (x *videoServiceGetVideoClient) Recv() (*Video, error) {
 	return m, nil
 }
 
-func (c *videoServiceClient) GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*VideoMetaData, error) {
-	out := new(VideoMetaData)
+func (c *videoServiceClient) GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*MetaData, error) {
+	out := new(MetaData)
 	err := c.cc.Invoke(ctx, "/VideoService/get_video_metadata", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (x *videoServiceAddVideoClient) CloseAndRecv() (*VideoId, error) {
 // for forward compatibility
 type VideoServiceServer interface {
 	GetVideo(*VideoId, VideoService_GetVideoServer) error
-	GetVideoMetadata(context.Context, *VideoId) (*VideoMetaData, error)
+	GetVideoMetadata(context.Context, *VideoId) (*MetaData, error)
 	GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error)
 	AddVideo(VideoService_AddVideoServer) error
 	mustEmbedUnimplementedVideoServiceServer()
@@ -139,7 +139,7 @@ type UnimplementedVideoServiceServer struct {
 func (UnimplementedVideoServiceServer) GetVideo(*VideoId, VideoService_GetVideoServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetVideo not implemented")
 }
-func (UnimplementedVideoServiceServer) GetVideoMetadata(context.Context, *VideoId) (*VideoMetaData, error) {
+func (UnimplementedVideoServiceServer) GetVideoMetadata(context.Context, *VideoId) (*MetaData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideoMetadata not implemented")
 }
 func (UnimplementedVideoServiceServer) GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error) {

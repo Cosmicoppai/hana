@@ -46,7 +46,7 @@ message VideosMetaData {
 
 service VideoService {
   rpc get_video (VideoId) returns (stream Video) {};
-  rpc get_video_metadata (VideoId) returns (VideoMetaData) {};
+  rpc get_video_metadata (VideoId) returns (MetaData) {};
   rpc get_videos_metadata (google.protobuf.Empty) returns (VideosMetaData) {};
   rpc add_video (stream UploadVideo) returns (VideoId) {};
 }

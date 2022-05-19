@@ -11,13 +11,15 @@ import (
 )
 
 func main() {
+	maxSendMsg := 10485760
+	maxRecvMsg := 10485760
 	port := flag.Int("port", 9000, "Server Port")
 	flag.Parse()
 	log.Printf("dialling on port %d", *port)
 
 	address := fmt.Sprintf("0.0.0.0:%d", *port)
 
-	gRPCServer := grpc.NewServer()
+	gRPCServer := grpc.NewServer(grpc.MaxSendMsgSize(maxSendMsg), grpc.MaxRecvMsgSize(maxRecvMsg))
 
 	videoStore := service.NewDiskStore("./video") // create an InMem VideoStore
 

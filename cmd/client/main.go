@@ -18,6 +18,8 @@ func testAddVideo(videoClient show.VideoServiceClient) {
 }
 
 func addVideo(client show.VideoServiceClient, videoPath string, posterPath string) {
+	maxMsgSize := 5243000
+	maxSize := grpc.MaxCallSendMsgSize(maxMsgSize)
 	log.Println("Opening poster file...")
 	posterFile, err := os.Open(posterPath)
 	if err != nil {
@@ -36,7 +38,7 @@ func addVideo(client show.VideoServiceClient, videoPath string, posterPath strin
 		Name: "test"}}}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
-	stream, err := client.AddVideo(ctx)
+	stream, err := client.AddVideo(ctx, maxSize)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -74,7 +76,41 @@ func addVideo(client show.VideoServiceClient, videoPath string, posterPath strin
 		log.Println("Error while closing stream", err)
 	}
 	log.Println("Received id: ", id)
+	receiveVideo(client, id)
 
+}
+
+func receiveVideo(client show.VideoServiceClient, videoId *show.VideoId) {
+	maxMsgSize := 5243000
+	maxSize := grpc.MaxCallRecvMsgSize(maxMsgSize)
+	id := &show.VideoId{Id: videoId.Id}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	clientStream, err := client.GetVideo(ctx, id, maxSize)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	file, err := os.Create("./client_req/test.mp4")
+	if err != nil {
+		log.Fatalln("error while creating file to receive video", err)
+	}
+	for {
+		req, err := clientStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalln(err)
+		}
+		_, err = file.Write(req.Video)
+		if err != nil {
+			log.Fatalln("error while writing to file", err)
+		}
+
+	}
+	log.Println("Video Successfully received")
+	_ = clientStream.CloseSend()
 }
 
 func main() {

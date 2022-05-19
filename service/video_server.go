@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"google.golang.org/grpc/codes"
@@ -9,6 +10,7 @@ import (
 	"hana/show"
 	"io"
 	"log"
+	"os"
 )
 
 const maxVideoSize = 1 << 29
@@ -31,8 +33,37 @@ func (server *VideoServer) GetVideosMetadata(context.Context, *emptypb.Empty) (*
 
 }
 
-func (server *VideoServer) GetVideo(*show.VideoId, show.VideoService_GetVideoServer) error {
-	return nil
+func (server *VideoServer) GetVideo(videoId *show.VideoId, stream show.VideoService_GetVideoServer) error {
+	err, info := server.store.Find(videoId.Id)
+	if err != nil {
+		log.Println(err)
+		return status.Errorf(codes.NotFound, "video with id %s doesn't exist", videoId.Id)
+	}
+	file, err := os.Open(info.Path)
+	if err != nil {
+		log.Println("Unable to open file", err)
+		return status.Errorf(codes.Internal, "Internal server error")
+	}
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 5242880)
+
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Println("error while reading video file", err)
+			return status.Errorf(codes.Internal, "Internal server error")
+		}
+		video := &show.Video{Video: buffer[:n]}
+		err = stream.Send(video)
+		if err != nil {
+			log.Println("error while sending video", err)
+			return status.Errorf(codes.Internal, "Internal server error")
+		}
+	}
+	return status.Errorf(codes.OK, "")
 }
 
 func (server *VideoServer) AddVideo(stream show.VideoService_AddVideoServer) error {

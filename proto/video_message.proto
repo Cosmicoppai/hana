@@ -41,13 +41,12 @@ message VideoMetaData {
 
 message VideosMetaData {
   repeated VideoMetaData videos = 1;
-  string next_page_token = 2;
   int32 total_response = 3;
 }
 
 message VideosMetaDataRequest {
-  string page_token = 1;
-  int32 page_size = 2;
+  uint32 limit = 1;
+  uint32 offset = 2;
 
 }
 

@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -25,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type VideoServiceClient interface {
 	GetVideo(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (VideoService_GetVideoClient, error)
 	GetVideoMetadata(ctx context.Context, in *VideoId, opts ...grpc.CallOption) (*MetaData, error)
-	GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error)
+	GetVideosMetadata(ctx context.Context, in *VideosMetaDataRequest, opts ...grpc.CallOption) (*VideosMetaData, error)
 	AddVideo(ctx context.Context, opts ...grpc.CallOption) (VideoService_AddVideoClient, error)
 }
 
@@ -78,7 +77,7 @@ func (c *videoServiceClient) GetVideoMetadata(ctx context.Context, in *VideoId, 
 	return out, nil
 }
 
-func (c *videoServiceClient) GetVideosMetadata(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VideosMetaData, error) {
+func (c *videoServiceClient) GetVideosMetadata(ctx context.Context, in *VideosMetaDataRequest, opts ...grpc.CallOption) (*VideosMetaData, error) {
 	out := new(VideosMetaData)
 	err := c.cc.Invoke(ctx, "/VideoService/get_videos_metadata", in, out, opts...)
 	if err != nil {
@@ -127,7 +126,7 @@ func (x *videoServiceAddVideoClient) CloseAndRecv() (*VideoId, error) {
 type VideoServiceServer interface {
 	GetVideo(*VideoId, VideoService_GetVideoServer) error
 	GetVideoMetadata(context.Context, *VideoId) (*MetaData, error)
-	GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error)
+	GetVideosMetadata(context.Context, *VideosMetaDataRequest) (*VideosMetaData, error)
 	AddVideo(VideoService_AddVideoServer) error
 	mustEmbedUnimplementedVideoServiceServer()
 }
@@ -142,7 +141,7 @@ func (UnimplementedVideoServiceServer) GetVideo(*VideoId, VideoService_GetVideoS
 func (UnimplementedVideoServiceServer) GetVideoMetadata(context.Context, *VideoId) (*MetaData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideoMetadata not implemented")
 }
-func (UnimplementedVideoServiceServer) GetVideosMetadata(context.Context, *emptypb.Empty) (*VideosMetaData, error) {
+func (UnimplementedVideoServiceServer) GetVideosMetadata(context.Context, *VideosMetaDataRequest) (*VideosMetaData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideosMetadata not implemented")
 }
 func (UnimplementedVideoServiceServer) AddVideo(VideoService_AddVideoServer) error {
@@ -201,7 +200,7 @@ func _VideoService_GetVideoMetadata_Handler(srv interface{}, ctx context.Context
 }
 
 func _VideoService_GetVideosMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(VideosMetaDataRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -213,7 +212,7 @@ func _VideoService_GetVideosMetadata_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/VideoService/get_videos_metadata",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VideoServiceServer).GetVideosMetadata(ctx, req.(*emptypb.Empty))
+		return srv.(VideoServiceServer).GetVideosMetadata(ctx, req.(*VideosMetaDataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

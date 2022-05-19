@@ -111,6 +111,30 @@ func receiveVideo(client show.VideoServiceClient, videoId *show.VideoId) {
 	}
 	log.Println("Video Successfully received")
 	_ = clientStream.CloseSend()
+
+	getMetaData(client, videoId)
+}
+
+func getMetaData(client show.VideoServiceClient, videoId *show.VideoId) {
+	maxMsgSize := 5243000
+	maxSize := grpc.MaxCallRecvMsgSize(maxMsgSize)
+	id := &show.VideoId{Id: videoId.Id}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	res, err := client.GetVideoMetadata(ctx, id, maxSize)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if res.Name == "" || len(res.Poster) == 0 || res.CreatedAt == nil {
+		log.Println("Wrong Response Received")
+		log.Println(res.Name)
+		log.Println(len(res.Poster))
+		log.Println(len(res.Sub))
+		log.Println(res.CreatedAt)
+		return
+	}
+	log.Println("MetaData Received Successfully")
+
 }
 
 func main() {

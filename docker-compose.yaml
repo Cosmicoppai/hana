@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  hana:
+    container_name: "hana"
+    build:
+      context: .
+    ports:
+      - "8096:8096"
+    restart: on-failure

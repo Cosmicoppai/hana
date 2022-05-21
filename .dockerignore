@@ -1,0 +1,9 @@
+.git
+.idea/
+Readme.md
+Dockerfile
+client_req/*.mp4
+video/*.png
+video/*.vtt
+Makefile
+docker-compose.yaml

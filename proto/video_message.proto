@@ -41,7 +41,7 @@ message VideoMetaData {
 
 message VideosMetaData {
   repeated VideoMetaData videos = 1;
-  int32 total_response = 3;
+  uint32 total_response = 3;
 }
 
 message VideosMetaDataRequest {

@@ -81,7 +81,7 @@ func (store *DiskVideoStore) Save(videoName string, videoTyp string, videoData b
 		videoType: videoTyp,
 		CreatedAt: &timestamppb.Timestamp{Seconds: int64(time.Now().Second())},
 	}
-	store.videosMetaData = append([]*VideoInfo{metaData}, store.videosMetaData...)
+	store.videosMetaData = append(store.videosMetaData, metaData)
 	store.videos[id.String()] = len(store.videosMetaData) - 1
 	return id, nil
 }
@@ -135,10 +135,12 @@ func (store *DiskVideoStore) Find(videoId string) (*VideoInfo, error) {
 func (store *DiskVideoStore) GetMetaDatas(limit uint32, offset uint32) (*show.VideosMetaData, error) {
 	resp := show.VideosMetaData{TotalResponse: limit - offset}
 	var metaDatas []*show.VideoMetaData
-	for _, videoInfo := range store.videosMetaData[offset:limit] {
+	offset, limit = uint32(len(store.videosMetaData))-offset, uint32(len(store.videosMetaData))-limit
+	for idx := offset - 1; idx < limit-1; idx-- {
+		videoInfo := store.videosMetaData[idx]
 		poster, err := os.ReadFile(videoInfo.PosterPath)
 		if err != nil {
-			log.Println(err)
+			log.Println("Error while reading poster file", err)
 			return nil, status.Errorf(codes.Internal, "Internal server error")
 		}
 		var sub []byte

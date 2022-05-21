@@ -3,8 +3,8 @@ gen:
 clean:
 	rm -r ./show
 server:
-	go run cmd/server/main.go --port 8096
+	go run ./cmd/server/main.go --port 8096
 client:
-	go run cmd/client/main.go --address 0.0.0.0:8096
+	go run ./cmd/client/main.go --address 0.0.0.0:8096
 test:
 	go test --cover -race ./...

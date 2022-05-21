@@ -134,11 +134,29 @@ func getMetaData(client show.VideoServiceClient, videoId *show.VideoId) {
 		return
 	}
 	log.Println("MetaData Received Successfully")
+	log.Println("Requesting for metaDatas of last 5 added videos")
+	getMetaDatas(client)
 
 }
 
+func getMetaDatas(client show.VideoServiceClient) {
+	maxMsgSize := 10485560
+	maxSize := grpc.MaxCallRecvMsgSize(maxMsgSize)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req := &show.VideosMetaDataRequest{Limit: 10}
+	res, err := client.GetVideosMetadata(ctx, req, maxSize)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(res.TotalResponse)
+	for _, metaData := range res.Videos {
+		log.Println(metaData.VideoId)
+	}
+}
+
 func main() {
-	servAddress := flag.String("address", "", "Server Address")
+	servAddress := flag.String("address", "0.0.0.0:9000", "Server Address")
 	flag.Parse()
 	log.Printf("dialling server at %s", *servAddress)
 

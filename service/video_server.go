@@ -6,7 +6,6 @@ import (
 	"context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"hana/show"
 	"io"
 	"log"
@@ -14,6 +13,7 @@ import (
 )
 
 const maxVideoSize = 1 << 29
+const defaultOffset = 25
 
 type VideoServer struct {
 	show.UnimplementedVideoServiceServer
@@ -37,10 +37,25 @@ func (server *VideoServer) GetVideoMetadata(ctx context.Context, videoId *show.V
 	return metaData, nil
 
 }
-func (server *VideoServer) GetVideosMetadata(context.Context, *emptypb.Empty) (*show.VideosMetaData, error) {
-	videosMetaData, err := server.store.GetMetaDatas()
+func (server *VideoServer) GetVideosMetadata(ctx context.Context, request *show.VideosMetaDataRequest) (*show.VideosMetaData, error) {
+	limit := request.Limit
+	offset := request.Offset
+	totalVideos := uint32(server.store.TotalVideos())
+	if offset > totalVideos {
+		offset = totalVideos
+	}
+	if limit < offset {
+		return nil, status.Errorf(codes.InvalidArgument, "limit is less than offset")
+	}
+	if limit == 0 {
+		limit = offset + defaultOffset
+	}
+	if limit > totalVideos {
+		limit = totalVideos
+	}
+	videosMetaData, err := server.store.GetMetaDatas(limit, offset)
 	if err != nil {
-		log.Println(err)
+		log.Println("error while returning videosMetaData", err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	return videosMetaData, nil
@@ -123,7 +138,7 @@ func (server *VideoServer) AddVideo(stream show.VideoService_AddVideoServer) err
 		log.Println(err)
 		return status.Errorf(codes.Internal, "Cannot save video")
 	}
-	err = server.store.SaveMetaData(videoName, videoId, poster, sub)
+	err = server.store.SaveMetaData(videoId, poster, sub)
 	if err != nil {
 		log.Println(err)
 		return status.Errorf(codes.Internal, "Cannot save video meta data")

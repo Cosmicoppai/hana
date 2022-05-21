@@ -18,29 +18,32 @@ import (
 
 type VideoStore interface {
 	Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error)
-	SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error
+	SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error
 	Find(videoId string) (*VideoInfo, error)
-	GetMetaDatas() (*show.VideosMetaData, error)
+	GetMetaDatas(limit uint32, offset uint32) (*show.VideosMetaData, error)
 	GetMetaData(videoId string) (*show.MetaData, error)
+	TotalVideos() int
 }
 
 type DiskVideoStore struct {
-	mutex       sync.RWMutex
-	videoFolder string
-	videos      map[string]*VideoInfo
+	mutex          sync.RWMutex
+	videoFolder    string
+	videos         map[string]int
+	videosMetaData []*VideoInfo
 }
 
 type VideoInfo struct {
+	videoId    string
 	videoName  string
 	videoType  string
 	PosterPath string
 	SubPath    string
-	CreatedAt  timestamppb.Timestamp
+	CreatedAt  *timestamppb.Timestamp
 	VideoPath  string
 }
 
 func NewDiskStore(path string) *DiskVideoStore {
-	return &DiskVideoStore{videoFolder: path, videos: make(map[string]*VideoInfo)}
+	return &DiskVideoStore{videoFolder: path, videos: make(map[string]int), videosMetaData: []*VideoInfo{}}
 }
 
 func (store *DiskVideoStore) Save(videoName string, videoTyp string, videoData bytes.Buffer) (uuid.UUID, error) {
@@ -71,19 +74,23 @@ func (store *DiskVideoStore) Save(videoName string, videoTyp string, videoData b
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.videos[id.String()] = &VideoInfo{
+	metaData := &VideoInfo{
+		videoId:   id.String(),
 		videoName: videoName,
 		VideoPath: filePath,
 		videoType: videoTyp,
-		CreatedAt: timestamppb.Timestamp{Seconds: int64(time.Now().Second())},
+		CreatedAt: &timestamppb.Timestamp{Seconds: int64(time.Now().Second())},
 	}
+	store.videosMetaData = append([]*VideoInfo{metaData}, store.videosMetaData...)
+	store.videos[id.String()] = len(store.videosMetaData) - 1
 	return id, nil
 }
 
-func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
+func (store *DiskVideoStore) SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
 	if poster.Len() == 0 {
 		return status.Errorf(codes.InvalidArgument, "send poster in proper format")
 	}
+	videoName := store.videosMetaData[store.videos[videoId.String()]].videoName
 	dirPath := filepath.Join(store.videoFolder, videoId.String())
 	posterPath := fmt.Sprintf(filepath.Join(dirPath, fmt.Sprintf("%s%s", videoName, ".png")))
 	posterFile, err := os.Create(posterPath)
@@ -95,8 +102,8 @@ func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, p
 	if err != nil {
 		return status.Errorf(codes.Internal, "Internal server error")
 	}
-	id := videoId.String()
-	store.videos[id].PosterPath = posterPath
+	idx := store.videos[videoId.String()]
+	store.videosMetaData[idx].PosterPath = posterPath
 
 	if sub.Len() > 0 {
 		subPath := fmt.Sprintf(filepath.Join(dirPath, fmt.Sprintf("%s%s", videoName, ".vtt")))
@@ -110,7 +117,7 @@ func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, p
 			log.Println("Error while writing bytes of subFile: ", err)
 			return status.Errorf(codes.Internal, "Internal server error")
 		}
-		store.videos[id].SubPath = subPath
+		store.videosMetaData[idx].SubPath = subPath
 	}
 
 	log.Println("Meta Data saved Successfully")
@@ -118,18 +125,45 @@ func (store *DiskVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, p
 }
 
 func (store *DiskVideoStore) Find(videoId string) (*VideoInfo, error) {
-	if info, ok := store.videos[videoId]; ok {
+	if idx, ok := store.videos[videoId]; ok {
+		info := store.videosMetaData[idx]
 		return info, nil
 	}
 	return nil, errors.New("video doesn't exist")
 }
 
-func (store *DiskVideoStore) GetMetaDatas() (*show.VideosMetaData, error) {
-	return &show.VideosMetaData{}, nil
+func (store *DiskVideoStore) GetMetaDatas(limit uint32, offset uint32) (*show.VideosMetaData, error) {
+	resp := show.VideosMetaData{TotalResponse: limit - offset}
+	var metaDatas []*show.VideoMetaData
+	for _, videoInfo := range store.videosMetaData[offset:limit] {
+		poster, err := os.ReadFile(videoInfo.PosterPath)
+		if err != nil {
+			log.Println(err)
+			return nil, status.Errorf(codes.Internal, "Internal server error")
+		}
+		var sub []byte
+		if videoInfo.SubPath != "" {
+			sub, err = os.ReadFile(videoInfo.SubPath)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "Internal server error")
+			}
+		}
+		metaDatas = append(metaDatas, &show.VideoMetaData{MetaData: &show.MetaData{Poster: poster, Sub: sub, Name: videoInfo.videoName,
+			CreatedAt: videoInfo.CreatedAt},
+			VideoId: &show.VideoId{Id: videoInfo.videoId}})
+
+	}
+	resp.Videos = metaDatas
+	return &resp, nil
+}
+
+func (store *DiskVideoStore) TotalVideos() int {
+	return len(store.videos)
 }
 
 func (store *DiskVideoStore) GetMetaData(videoId string) (*show.MetaData, error) {
-	if videoInfo, ok := store.videos[videoId]; ok {
+	if idx, ok := store.videos[videoId]; ok {
+		videoInfo := store.videosMetaData[idx]
 		poster, posterErr := os.ReadFile(videoInfo.PosterPath)
 		var (
 			sub    []byte
@@ -142,7 +176,7 @@ func (store *DiskVideoStore) GetMetaData(videoId string) (*show.MetaData, error)
 			log.Println("error while reading poster data", posterErr, subErr)
 			return &show.MetaData{}, status.Errorf(codes.Internal, "Internal Server Error")
 		}
-		metaData := show.MetaData{Poster: poster, Sub: sub, CreatedAt: &videoInfo.CreatedAt, Name: videoInfo.videoName}
+		metaData := show.MetaData{Poster: poster, Sub: sub, CreatedAt: videoInfo.CreatedAt, Name: videoInfo.videoName}
 		return &metaData, nil
 	}
 	return &show.MetaData{}, nil
@@ -164,7 +198,7 @@ func (store *DBVideoStore) Save(videoName string, videoTyp string, videoData byt
 
 }
 
-func (store *DBVideoStore) SaveMetaData(videoName string, videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
+func (store *DBVideoStore) SaveMetaData(videoId uuid.UUID, poster bytes.Buffer, sub bytes.Buffer) error {
 	return nil
 }
 
@@ -175,10 +209,14 @@ func (store *DBVideoStore) Find(videoId string) (*VideoInfo, error) {
 	return nil, errors.New("video doesn't exist")
 }
 
-func (store *DBVideoStore) GetMetaDatas() (*show.VideosMetaData, error) {
+func (store *DBVideoStore) GetMetaDatas(limit uint32, offset uint32) (*show.VideosMetaData, error) {
 	return &show.VideosMetaData{}, nil
 }
 
 func (store *DBVideoStore) GetMetaData(videoId string) (*show.MetaData, error) {
 	return &show.MetaData{}, nil
+}
+
+func (store *DBVideoStore) TotalVideos() int {
+	return 0
 }

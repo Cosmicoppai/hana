@@ -1,10 +1,10 @@
-FROM golang:1.8
+FROM golang:1.18
 
-RUN mkdir src
+RUN mkdir app
 
-WORKDIR src
+WORKDIR app
 
-COPY . .
+COPY src .
 
 RUN chmod +x ./setup.sh && ./setup.sh
 

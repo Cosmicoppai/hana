@@ -10,7 +10,7 @@ The server process and saves the video and its metadata for future streaming.
 
 ## Requirements
 
-* If you don't want to install dependencies on your machine skip to [Installation using Docker](#Installation using Docker)
+* If you don't want to install dependencies on your machine skip to [Installation using Docker](#installation-using-docker).
 
 Install [Golang](https://go.dev/doc/install)
 
